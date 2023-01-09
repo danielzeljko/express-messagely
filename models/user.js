@@ -27,6 +27,20 @@ class User {
   /** Authenticate: is username/password valid? Returns boolean. */
 
   static async authenticate(username, password) {
+    const result = await db.query(
+      `SELECT password
+        FROM users
+        WHERE username = $1`,
+        [username]
+    );
+    const user = result.rows[0];
+
+    if(user) {
+      if (await bcrypt.compare(password, user.password) === true) {
+        return true;
+      }
+    }
+      return false;
   }
 
   /** Update last_login_at for user */
@@ -76,14 +90,16 @@ class User {
 }
 
 async function testUser(){
-  const test_user = await User.register({
-    "username": "maria",
-    "password": "test",
-    "first_name": "Maria",
-    "last_name": "Juravic",
-    "phone": "000-000-0000"
-  })
-  console.log({test_user})
+  // const test_user = await User.register({
+  //   "username": "maria",
+  //   "password": "test",
+  //   "first_name": "Maria",
+  //   "last_name": "Juravic",
+  //   "phone": "000-000-0000"
+  // })
+  // console.log({test_user})
+  const testUser = await User.authenticate("maria","asfafdad");
+  console.log("test user", testUser);
 }
 
 testUser();
