@@ -1,5 +1,9 @@
 "use strict";
 
+const bcrypt = require("bcrypt");
+const {BCRYPT_WORK_FACTOR, DB_URI} = require("../config");
+const db = require("../db");
+
 /** User of the site. */
 
 class User {
@@ -8,7 +12,16 @@ class User {
    *    {username, password, first_name, last_name, phone}
    */
 
-  static async register({ username, password, first_name, last_name, phone }) {
+  static async register({ username, password, first_name, last_name, phone}) {
+    const join_at = new Date()
+    const hashed_password = await bcrypt.hash(password, BCRYPT_WORK_FACTOR);
+    const result = await db.query(
+      `INSERT INTO users
+          VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING username, password, first_name, last_name, phone, join_at
+      `, [username, hashed_password, first_name, last_name, phone, join_at]
+    )
+    return result.rows[0]
   }
 
   /** Authenticate: is username/password valid? Returns boolean. */
@@ -61,6 +74,20 @@ class User {
   static async messagesTo(username) {
   }
 }
+
+async function testUser(){
+  const test_user = await User.register({
+    "username": "maria",
+    "password": "test",
+    "first_name": "Maria",
+    "last_name": "Juravic",
+    "phone": "000-000-0000"
+  })
+  console.log({test_user})
+}
+
+testUser();
+
 
 
 module.exports = User;
