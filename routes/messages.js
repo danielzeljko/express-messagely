@@ -2,6 +2,9 @@
 
 const Router = require("express").Router;
 const router = new Router();
+const Message = require("../models/message");
+const {authenticateJWT, ensureLoggedIn, ensureCorrectUser} = require("../middleware/auth")
+const {BadRequestError} = require("../expressError")
 
 /** GET /:id - get detail of message.
  *
@@ -23,6 +26,26 @@ const router = new Router();
  *   {message: {id, from_username, to_username, body, sent_at}}
  *
  **/
+
+router.post("/", authenticateJWT, ensureLoggedIn, async function(req, res, next){
+
+  // TODO: Make a middleware
+  // TODO: Make sure recipient exists or throw an error
+
+  if(req.body === undefined) throw new BadRequestError("Body must be included.");
+  const {to_username, body} = req.body;
+  if(to_username === undefined || body === undefined){
+    throw new BadRequestError("Message body and to_username must be included.")
+  }
+
+  const message = await Message.create({
+    from_username: res.locals.user.username,
+    to_username,
+    body
+  });
+
+  return res.status(201).json({message})
+});
 
 
 /** POST/:id/read - mark message as read:
