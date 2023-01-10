@@ -19,6 +19,18 @@ const {BadRequestError} = require("../expressError")
  *
  **/
 
+router.get("/:id", authenticateJWT, ensureLoggedIn, async function(req, res, next) {
+  //TODO: refactor line 28 to middleware or static method in messages
+  const {id} = req.params;
+  const currentUser = res.locals.user.username;
+  const message = await Message.get(id);
+
+  if(currentUser === message.from_user.username || currentUser === message.to_user.username) {
+    return res.json({message});
+  }
+  throw new BadRequestError();
+})
+
 
 /** POST / - post message.
  *
@@ -55,6 +67,17 @@ router.post("/", authenticateJWT, ensureLoggedIn, async function(req, res, next)
  * Makes sure that the only the intended recipient can mark as read.
  *
  **/
+router.post("/:id/read", authenticateJWT, ensureLoggedIn, async function(req, res, next) {
+  const {id} = req.params;
+  const currentUser = res.locals.user.username;
+  const message = await Message.get(id);
+
+  if(currentUser === message.to_user.username) {
+    const messageRead = await Message.markRead(id);
+    return res.json({ message:messageRead });
+  }
+  throw new BadRequestError("You cannot mark this message as read.");
+})
 
 
 module.exports = router;
