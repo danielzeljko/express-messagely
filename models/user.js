@@ -4,6 +4,9 @@ const bcrypt = require("bcrypt");
 const {BCRYPT_WORK_FACTOR, DB_URI} = require("../config");
 const db = require("../db");
 
+const { NotFoundError } = require("../expressError");
+const { serializeMessagesFrom, serializeMessagesTo } = require("./helper");
+
 /** User of the site. */
 
 class User {
@@ -46,12 +49,32 @@ class User {
   /** Update last_login_at for user */
 
   static async updateLoginTimestamp(username) {
+    const login_at = new Date()
+
+    const result = await db.query(
+      `UPDATE users
+        SET last_login_at = $1
+        WHERE username = $2
+        RETURNING last_login_at`,
+        [login_at, username]
+    );
+
+    if(!result.rows[0]) {
+      throw new NotFoundError(`${username} is not a valid user`);
+    }
+    return;
   }
 
   /** All: basic info on all users:
    * [{username, first_name, last_name}, ...] */
 
   static async all() {
+    const result = await db.query(
+      `SELECT username, first_name, last_name
+        FROM users`
+    );
+
+    return result.rows;
   }
 
   /** Get: get user by username
@@ -64,6 +87,17 @@ class User {
    *          last_login_at } */
 
   static async get(username) {
+    const result = await db.query(
+      `SELECT username, first_name, last_name, phone, join_at, last_login_at
+        FROM users
+        WHERE username = $1`,
+        [username]
+    );
+
+    if(result.rows[0] === undefined) {
+      throw new NotFoundError(`${username} is not a valid user`);
+    }
+    return result.rows[0];
   }
 
   /** Return messages from this user.
@@ -75,6 +109,24 @@ class User {
    */
 
   static async messagesFrom(username) {
+    const result = await db.query(
+      `SELECT f.username,
+              m.id,
+              m.body,
+              m.sent_at,
+              m.read_at,
+              m.to_username,
+              t.first_name AS to_first_name,
+              t.last_name AS to_last_name,
+              t.phone AS to_phone
+            FROM messages AS m
+              JOIN users AS f ON m.from_username = f.username
+              JOIN users AS t ON m.to_username = t.username
+        WHERE m.from_username = $1`,
+      [username]
+    );
+
+    return result.rows.map(o => serializeMessagesFrom(o));
   }
 
   /** Return messages to this user.
@@ -86,20 +138,43 @@ class User {
    */
 
   static async messagesTo(username) {
+    const result = await db.query(
+      `SELECT f.username,
+              m.id,
+              m.body,
+              m.sent_at,
+              m.read_at,
+              m.to_username,
+              f.first_name AS from_first_name,
+              f.last_name AS from_last_name,
+              f.phone AS from_phone
+            FROM messages AS m
+              JOIN users AS f ON m.from_username = f.username
+              JOIN users AS t ON m.to_username = t.username
+        WHERE m.to_username = $1`,
+      [username]
+    );
+
+    return result.rows.map(o => serializeMessagesTo(o));
   }
 }
 
 async function testUser(){
   // const test_user = await User.register({
-  //   "username": "maria",
+  //   "username": "daniel",
   //   "password": "test",
-  //   "first_name": "Maria",
-  //   "last_name": "Juravic",
+  //   "first_name": "Daniel",
+  //   "last_name": "Zeljko",
   //   "phone": "000-000-0000"
   // })
   // console.log({test_user})
-  const testUser = await User.authenticate("maria","asfafdad");
-  console.log("test user", testUser);
+  //const testUser = await User.authenticate("maria","asfafdad");
+  //const testTimeStamp = await User.updateLoginTimestamp("maria");
+  //console.log("all users", await User.all());
+  //console.log("test user", testUser);
+  //console.log(await User.get("daniel"));
+   console.log(await User.messagesFrom("maria"));
+   //console.log(await User.messagesTo("daniel"));
 }
 
 testUser();
