@@ -3,7 +3,7 @@
 const Router = require("express").Router;
 const router = new Router();
 const Message = require("../models/message");
-const {authenticateJWT, ensureLoggedIn, ensureCorrectUser} = require("../middleware/auth")
+const {ensureLoggedIn} = require("../middleware/auth")
 const {BadRequestError} = require("../expressError")
 
 /** GET /:id - get detail of message.
@@ -19,7 +19,7 @@ const {BadRequestError} = require("../expressError")
  *
  **/
 
-router.get("/:id", authenticateJWT, ensureLoggedIn, async function(req, res, next) {
+router.get("/:id", ensureLoggedIn, async function(req, res, next) {
   //TODO: refactor line 28 to middleware or static method in messages
   const {id} = req.params;
   const currentUser = res.locals.user.username;
@@ -39,7 +39,7 @@ router.get("/:id", authenticateJWT, ensureLoggedIn, async function(req, res, nex
  *
  **/
 
-router.post("/", authenticateJWT, ensureLoggedIn, async function(req, res, next){
+router.post("/", ensureLoggedIn, async function(req, res, next){
 
   // TODO: Make a middleware
   // TODO: Make sure recipient exists or throw an error
@@ -67,7 +67,7 @@ router.post("/", authenticateJWT, ensureLoggedIn, async function(req, res, next)
  * Makes sure that the only the intended recipient can mark as read.
  *
  **/
-router.post("/:id/read", authenticateJWT, ensureLoggedIn, async function(req, res, next) {
+router.post("/:id/read", ensureLoggedIn, async function(req, res, next) {
   const {id} = req.params;
   const currentUser = res.locals.user.username;
   const message = await Message.get(id);
