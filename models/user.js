@@ -1,7 +1,7 @@
 "use strict";
 
 const bcrypt = require("bcrypt");
-const {BCRYPT_WORK_FACTOR, DB_URI} = require("../config");
+const { BCRYPT_WORK_FACTOR } = require("../config");
 const db = require("../db");
 
 const { NotFoundError } = require("../expressError");
@@ -15,16 +15,15 @@ class User {
    *    {username, password, first_name, last_name, phone}
    */
 
-  static async register({ username, password, first_name, last_name, phone}) {
-    const join_at = new Date()
+  static async register({ username, password, first_name, last_name, phone }) {
     const hashed_password = await bcrypt.hash(password, BCRYPT_WORK_FACTOR);
     const result = await db.query(
       `INSERT INTO users
-          VALUES ($1, $2, $3, $4, $5, $6)
-        RETURNING username, password, first_name, last_name, phone, join_at
-      `, [username, hashed_password, first_name, last_name, phone, join_at]
-    )
-    return result.rows[0]
+          VALUES ($1, $2, $3, $4, $5, current_timestamp, current_timestamp)
+        RETURNING username, password, first_name, last_name, phone
+      `, [username, hashed_password, first_name, last_name, phone]
+    );
+    return result.rows[0];
   }
 
   /** Authenticate: is username/password valid? Returns boolean. */
@@ -34,35 +33,33 @@ class User {
       `SELECT password
         FROM users
         WHERE username = $1`,
-        [username]
+      [username]
     );
     const user = result.rows[0];
 
-    if(user) {
+    if (user) {
       if (await bcrypt.compare(password, user.password) === true) {
         return true;
       }
     }
-      return false;
+    return false;
   }
 
   /** Update last_login_at for user */
 
   static async updateLoginTimestamp(username) {
-    const login_at = new Date()
-
     const result = await db.query(
       `UPDATE users
-        SET last_login_at = $1
-        WHERE username = $2
+        SET last_login_at = current_timestamp
+        WHERE username = $1
         RETURNING last_login_at`,
-        [login_at, username]
+      [username]
     );
 
-    if(!result.rows[0]) {
+    if (!result.rows[0]) {
       throw new NotFoundError(`${username} is not a valid user`);
     }
-    return;
+    // return;
   }
 
   /** All: basic info on all users:
@@ -88,13 +85,18 @@ class User {
 
   static async get(username) {
     const result = await db.query(
-      `SELECT username, first_name, last_name, phone, join_at, last_login_at
+      `SELECT username,
+              first_name,
+              last_name,
+              phone,
+              join_at,
+              last_login_at
         FROM users
         WHERE username = $1`,
-        [username]
+      [username]
     );
 
-    if(result.rows[0] === undefined) {
+    if (result.rows[0] === undefined) {
       throw new NotFoundError(`${username} is not a valid user`);
     }
     return result.rows[0];
@@ -157,28 +159,8 @@ class User {
 
     return result.rows.map(o => serializeMessagesTo(o));
   }
+
 }
-
-async function testUser(){
-  // const test_user = await User.register({
-  //   "username": "daniel",
-  //   "password": "test",
-  //   "first_name": "Daniel",
-  //   "last_name": "Zeljko",
-  //   "phone": "000-000-0000"
-  // })
-  // console.log({test_user})
-  //const testUser = await User.authenticate("maria","asfafdad");
-  //const testTimeStamp = await User.updateLoginTimestamp("maria");
-  //console.log("all users", await User.all());
-  //console.log("test user", testUser);
-  //console.log(await User.get("daniel"));
-   console.log(await User.messagesFrom("maria"));
-   //console.log(await User.messagesTo("daniel"));
-}
-
-testUser();
-
 
 
 module.exports = User;

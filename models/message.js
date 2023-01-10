@@ -102,11 +102,4 @@ class Message {
   }
 }
 
-async function test() {
-  let testMessage = Message.create({"from_username": "maria", "to_username":"daniel", "body": "Did you get this message?"});
-}
-
-test();
-
-
 module.exports = Message;
