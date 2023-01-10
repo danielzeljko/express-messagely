@@ -23,19 +23,15 @@ router.post("/register", async function (req, res, next) {
 
   // TODO: Try catch for duplicate username
 
-  // TODO: What do they mean by logs in?? set 'res.locals.user?'
-
   if (req.body === undefined) throw new BadRequestError("Body must be included.");
 
   const { username, password, first_name, last_name, phone } = req.body;
   const result = await User.register({username, password, first_name, last_name, phone});
-  const authenticateUser = User.authenticate(result.username, password);
 
-  let token;
-  if (authenticateUser) {
-    const payload = {"username": result.username}
-    token = jwt.sign(payload, SECRET_KEY);
-  }
+
+  const payload = {"username": result.username}
+  const token = jwt.sign(payload, SECRET_KEY);
+
 
   return res.status(201).json({token});
 
